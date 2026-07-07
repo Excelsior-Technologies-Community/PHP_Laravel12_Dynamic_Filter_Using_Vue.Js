@@ -52,63 +52,80 @@
                     </button>
                 </div>
 
-                <!-- Filters Grid -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                    <!-- Search Input -->
-                    <div class="group">
-                        <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-                            <svg class="w-4 h-4 mr-2 text-gray-400 group-focus-within:text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                            </svg>
-                            Search Products
-                        </label>
-                        <div class="relative">
-                            <input
-                                v-model="filters.search"
-                                type="text"
-                                placeholder="Type to search..."
-                                class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all duration-200"
-                                @input="debouncedFilter"
-                            />
-                            <div class="absolute left-3 top-1/2 transform -translate-y-1/2">
-                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
+             <!-- Search -->
+             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+               <div class="group relative">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+        Search Products
+    </label>
 
-                    <!-- Category Filter -->
-                    <div class="group">
-                        <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-                            <svg class="w-4 h-4 mr-2 text-gray-400 group-focus-within:text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                            </svg>
-                            Category
-                        </label>
-                        <div class="relative">
-                            <select
-                                v-model="filters.category_id"
-                                @change="filterProducts"
-                                class="w-full appearance-none pl-10 pr-10 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all duration-200"
-                            >
-                                <option value="">All Categories</option>
-                                <option v-for="category in categories" :key="category.id" :value="category.id">
-                                    {{ category.name }}
-                                </option>
-                            </select>
-                            <div class="absolute left-3 top-1/2 transform -translate-y-1/2">
-                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                                </svg>
-                            </div>
-                            <div class="absolute right-3 top-1/2 transform -translate-y-1/2">
-                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
+    <div class="relative">
+        <input
+            v-model="filters.search"
+            type="text"
+            placeholder="Type product name..."
+            class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+            @input="
+                debouncedFilter();
+                fetchSuggestions();
+            "
+        />
+
+        <div class="absolute left-3 top-1/2 -translate-y-1/2">
+            🔍
+        </div>
+
+        <!-- Suggestions -->
+        <div
+            v-if="suggestions.length"
+            class="absolute left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg z-50"
+        >
+            <div
+                v-for="item in suggestions"
+                :key="item.id"
+                class="px-4 py-2 hover:bg-blue-50 cursor-pointer"
+                @click="
+                    filters.search = item.name;
+                    suggestions = [];
+                    filterProducts();
+                "
+            >
+                {{ item.name }}
+            </div>
+        </div>
+    </div>
+</div>
+
+ <div class="group">
+
+<label class="block text-sm font-medium text-gray-700 mb-2">
+
+Category
+
+</label>
+
+<select
+    v-model="filters.category_id"
+    @change="filterProducts"
+    class="w-full py-3 px-3 border rounded-xl"
+>
+
+<option value="">All Categories</option>
+
+<option
+    v-for="category in categories"
+    :key="category.id"
+    :value="category.id"
+>
+
+{{ category.name }} ({{ category.products_count }})
+
+</option>
+
+</select>
+
+</div>
+                          
 
                     <!-- Min Price -->
                     <div class="group">
@@ -424,6 +441,7 @@ export default {
         const categories = ref([]);
         const loading = ref(false);
         const selectedProduct = ref(null);
+        const suggestions = ref([]);
         
         const filters = reactive({
             search: '',
@@ -493,40 +511,26 @@ export default {
         };
 
         // Fetch products
-        const fetchProducts = async (url = null) => {
-            loading.value = true;
-            
-            try {
-                const apiUrl = url || '/api/products';
-                const params = url ? {} : { ...filters };
-                
-                // Clean up empty values
-                Object.keys(params).forEach(key => {
-                    if (params[key] === '' || params[key] === null || params[key] === undefined) {
-                        delete params[key];
-                    }
-                });
-                
-                const response = await axios.get(apiUrl, { params });
-                
-                if (response.data.success) {
-                    products.value = response.data.data;
-                }
-            } catch (error) {
-                console.error('Error fetching products:', error);
-                products.value = {
-                    data: [],
-                    links: [],
-                    current_page: 1,
-                    from: null,
-                    to: null,
-                    total: 0,
-                    last_page: 1,
-                };
-            } finally {
-                loading.value = false;
+        const fetchProducts = async (page = 1) => {
+    loading.value = true;
+
+    try {
+        const response = await axios.get('/api/products', {
+            params: {
+                ...filters,
+                page: page
             }
-        };
+        });
+
+        if (response.data.success) {
+            products.value = response.data.data;
+        }
+    } catch (error) {
+        console.error(error);
+    } finally {
+        loading.value = false;
+    }
+};
 
         // Fetch categories
         const fetchCategories = async () => {
@@ -554,12 +558,36 @@ export default {
             fetchProducts();
         }, 500);
 
-        // Go to page
-        const goToPage = (url) => {
-            if (url) {
-                fetchProducts(url);
+        const fetchSuggestions = debounce(async () => {
+
+    if (filters.search.length < 2) {
+        suggestions.value = [];
+        return;
+    }
+
+    try {
+        const response = await axios.get('/api/suggestions', {
+            params: {
+                search: filters.search
             }
-        };
+        });
+
+        suggestions.value = response.data.data;
+
+    } catch (error) {
+        suggestions.value = [];
+    }
+
+}, 300);
+
+        // Go to page
+       const goToPage = (url) => {
+    if (!url) return;
+
+    const page = new URL(url).searchParams.get('page');
+
+    fetchProducts(page);
+};
 
         // Reset filters
         const resetFilters = () => {
@@ -599,10 +627,15 @@ export default {
             formatPrice,
             formatDate,
             getCategoryColor,
+            suggestions,
+fetchSuggestions,
             truncateDescription
         };
     }
 }
+
+
+
 </script>
 
 <style scoped>
