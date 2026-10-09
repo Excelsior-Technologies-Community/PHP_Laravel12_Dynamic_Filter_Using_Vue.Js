@@ -1,1027 +1,605 @@
 <template>
-    <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-6">
-        <!-- Header -->
-        <div class="max-w-7xl mx-auto mb-8">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+  <div class="min-h-screen bg-slate-100 p-4 md:p-8">
+    <div class="max-w-7xl mx-auto space-y-8">
+
+      <!-- TOP CONTROL HEADER & EXPORT TOOLBAR -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+        <div>
+          <div class="flex items-center gap-3">
+            <div class="p-3 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-xl text-white shadow-md">
+              <i class="fa-solid fa-filter text-xl"></i>
+            </div>
+            <div>
+              <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Multi-Faceted Product Filter Studio</h1>
+              <p class="text-sm text-slate-500 font-medium">Laravel 12 + Vue 3 Dynamic Checkboxes, URL Sync & Multi-Format Exports</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Multi-Format Export Studio Buttons -->
+        <div class="flex flex-wrap items-center gap-3">
+          <button 
+            @click="exportCSV" 
+            class="px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-sm"
+          >
+            <i class="fa-solid fa-file-csv text-base"></i> Export CSV
+          </button>
+
+          <button 
+            @click="exportExcel" 
+            class="px-4 py-2.5 bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-sm"
+          >
+            <i class="fa-solid fa-file-excel text-base"></i> Export Excel
+          </button>
+
+          <button 
+            @click="exportPrintPDF" 
+            class="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-sm"
+          >
+            <i class="fa-solid fa-file-pdf text-base"></i> PDF / Print Report
+          </button>
+
+          <button 
+            @click="copyShareableLink" 
+            class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-2"
+          >
+            <i class="fa-solid fa-share-nodes text-base"></i> Copy Shareable URL
+          </button>
+        </div>
+      </div>
+
+      <!-- ACTIVE FILTER CHIPS / BADGES BAR -->
+      <div v-if="activeFilterChips.length > 0" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mr-2">
+              <i class="fa-solid fa-tags text-indigo-500"></i> Active Filters ({{ activeFilterChips.length }}):
+            </span>
+
+            <span 
+              v-for="chip in activeFilterChips" 
+              :key="chip.key" 
+              class="px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold flex items-center gap-2 shadow-sm hover:bg-indigo-100 transition-all cursor-pointer"
+              @click="removeFilterChip(chip)"
+            >
+              {{ chip.label }}
+              <i class="fa-solid fa-xmark text-rose-500 font-bold hover:text-rose-700"></i>
+            </span>
+          </div>
+
+          <button 
+            @click="resetAllFilters" 
+            class="px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+          >
+            <i class="fa-solid fa-rotate-left"></i> Reset All Filters
+          </button>
+        </div>
+      </div>
+
+      <!-- MAIN FILTER & RESULTS GRID CONTAINER -->
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        
+        <!-- SIDEBAR FILTER MATRIX (LEFT COLUMN) -->
+        <div class="space-y-6">
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+              <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                <i class="fa-solid fa-sliders text-blue-600"></i> Filter Matrix
+              </h2>
+              <span class="text-xs text-slate-400 font-medium">Auto URL Syncing</span>
+            </div>
+
+            <!-- SEARCH INPUT -->
+            <div>
+              <label class="block text-xs font-bold text-slate-600 uppercase mb-2">Search Product / Brand</label>
+              <div class="relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+                <input 
+                  v-model="filters.search" 
+                  @input="onSearchInput" 
+                  type="text" 
+                  placeholder="e.g. Headphones, Apple..."
+                  class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all"
+                >
+                
+                <!-- Live Suggestions -->
+                <div v-if="suggestions.length > 0" class="absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden divide-y divide-slate-100">
+                  <div 
+                    v-for="item in suggestions" 
+                    :key="item.id" 
+                    class="p-3 text-xs font-semibold text-slate-700 hover:bg-blue-50 cursor-pointer flex justify-between items-center"
+                    @click="selectSuggestion(item)"
+                  >
+                    <span>{{ item.name }}</span>
+                    <span class="text-[10px] text-slate-400 font-mono">${{ parseFloat(item.price).toFixed(2) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- IN-STOCK ONLY WATCHDOG SWITCH -->
+            <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 flex justify-between items-center">
+              <div>
+                <span class="block text-xs font-bold text-slate-800">In-Stock Only Watchdog</span>
+                <span class="text-[11px] text-slate-400">Exclude out-of-stock items</span>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" v-model="filters.in_stock" @change="applyFilters" class="sr-only peer">
+                <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+              </label>
+            </div>
+
+            <!-- DUAL-THUMB INTERACTIVE PRICE RANGE SLIDER -->
+            <div>
+              <div class="flex justify-between items-center mb-2">
+                <label class="text-xs font-bold text-slate-600 uppercase">Price Range ($)</label>
+                <span class="text-xs font-mono font-bold text-blue-600">
+                  ${{ filters.min_price || bounds.min_price }} - ${{ filters.max_price || bounds.max_price }}
+                </span>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3 mb-3">
                 <div>
-                    <h1 class="text-3xl md:text-4xl font-bold text-gray-900">
-                        <span class="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
-                            Product Filter System
-                        </span>
-                    </h1>
-                    <p class="mt-2 text-gray-600">Find exactly what you're looking for with powerful filters</p>
+                  <span class="text-[10px] text-slate-400 block mb-1">Min Price ($)</span>
+                  <input 
+                    v-model.number="filters.min_price" 
+                    @change="applyFilters"
+                    type="number" 
+                    class="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 font-mono font-semibold"
+                    :placeholder="bounds.min_price"
+                  >
                 </div>
 
-                <div class="flex items-center space-x-4">
-
-                    <button @click="showFavoritesOnly = !showFavoritesOnly"
-                        class="flex items-center space-x-2 bg-pink-50 px-4 py-2 rounded-xl hover:bg-pink-100 transition">
-
-                        <span class="text-xl">
-                            ❤️
-                        </span>
-
-                        <div>
-                            <p class="text-sm font-bold text-gray-900">
-                                {{ favoriteCount }}
-                            </p>
-
-                            <p class="text-xs text-gray-500">
-                                Favorites
-                            </p>
-                        </div>
-
-                    </button>
-                    <div class="hidden md:flex items-center space-x-2">
-                        <div
-                            class="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z">
-                                </path>
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="text-sm font-medium text-gray-900">{{ products.total || 0 }}</p>
-                            <p class="text-xs text-gray-500">Total Products</p>
-                        </div>
-                    </div>
+                <div>
+                  <span class="text-[10px] text-slate-400 block mb-1">Max Price ($)</span>
+                  <input 
+                    v-model.number="filters.max_price" 
+                    @change="applyFilters"
+                    type="number" 
+                    class="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 font-mono font-semibold"
+                    :placeholder="bounds.max_price"
+                  >
                 </div>
+              </div>
             </div>
+
+            <!-- MULTI-CATEGORY CHECKBOX MATRIX -->
+            <div>
+              <span class="block text-xs font-bold text-slate-600 uppercase mb-3">Categories (Multi-Select)</span>
+              <div class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                <label 
+                  v-for="cat in categories" 
+                  :key="cat.id" 
+                  class="flex items-center justify-between text-xs font-medium text-slate-700 hover:text-slate-900 cursor-pointer p-1.5 rounded-lg hover:bg-slate-50 transition-all"
+                >
+                  <div class="flex items-center gap-2">
+                    <input 
+                      type="checkbox" 
+                      :value="cat.id" 
+                      v-model="filters.category_ids"
+                      @change="applyFilters"
+                      class="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    >
+                    <span>{{ cat.name }}</span>
+                  </div>
+                  <span class="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">
+                    {{ cat.products_count || 0 }}
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <!-- MULTI-BRAND CHECKBOX MATRIX -->
+            <div>
+              <span class="block text-xs font-bold text-slate-600 uppercase mb-3">Brands (Multi-Select)</span>
+              <div class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                <label 
+                  v-for="brand in brandsList" 
+                  :key="brand.brand" 
+                  class="flex items-center justify-between text-xs font-medium text-slate-700 hover:text-slate-900 cursor-pointer p-1.5 rounded-lg hover:bg-slate-50 transition-all"
+                >
+                  <div class="flex items-center gap-2">
+                    <input 
+                      type="checkbox" 
+                      :value="brand.brand" 
+                      v-model="filters.brands"
+                      @change="applyFilters"
+                      class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    >
+                    <span>{{ brand.brand }}</span>
+                  </div>
+                  <span class="text-[10px] font-bold bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full">
+                    {{ brand.count || 0 }}
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <!-- RATING FILTER -->
+            <div>
+              <span class="block text-xs font-bold text-slate-600 uppercase mb-2">Minimum Rating</span>
+              <select 
+                v-model="filters.min_rating" 
+                @change="applyFilters"
+                class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium bg-white"
+              >
+                <option value="">All Ratings</option>
+                <option value="4.5">⭐ 4.5 Stars & Above</option>
+                <option value="4.0">⭐ 4.0 Stars & Above</option>
+                <option value="3.5">⭐ 3.5 Stars & Above</option>
+              </select>
+            </div>
+
+          </div>
         </div>
 
-        <div class="max-w-7xl mx-auto">
-            <!-- Filters Card -->
-            <div class="bg-white rounded-2xl shadow-xl p-6 mb-8 border border-gray-200">
-                <div class="flex items-center justify-between mb-6">
-                    <div class="flex items-center space-x-2">
-                        <div class="p-2 bg-gradient-to-r from-blue-100 to-purple-100 rounded-lg">
-                            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4">
-                                </path>
-                            </svg>
-                        </div>
-                        <h2 class="text-xl font-bold text-gray-900">
-                            Filters
-
-                            <span class="ml-2 text-sm text-pink-600" v-if="favoriteCount">
-                                (❤️ {{ favoriteCount }})
-                            </span>
-
-                        </h2>
-                    </div>
-
-
-                    <div class="flex items-center gap-3">
-
-                        <!-- Favorite Toggle -->
-                        <button @click="showFavoritesOnly = !showFavoritesOnly"
-                            class="px-4 py-2 rounded-lg transition-all duration-200" :class="showFavoritesOnly
-                                ? 'bg-pink-600 text-white shadow-lg'
-                                : 'bg-pink-100 text-pink-700 hover:bg-pink-200'">
-                            ❤️
-                            {{ showFavoritesOnly ? 'Favorites Only' : 'Show Favorites' }}
-                        </button>
-
-
-                        <!-- Reset Button -->
-                        <button @click="resetFilters"
-                            class="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-lg hover:from-gray-200 hover:to-gray-300 transition-all duration-200 hover:shadow-md">
-
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
-                                </path>
-                            </svg>
-
-                            <span>Reset All</span>
-
-                        </button>
-
-                    </div>
-                </div>
-
-                <!-- Search -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div class="group relative">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Search Products
-                        </label>
-
-                        <div class="relative">
-                            <input v-model="filters.search" type="text" placeholder="Type product name..."
-                                class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
-                                @input="
-                                    debouncedFilter();
-                                fetchSuggestions();
-                                " />
-
-                            <div class="absolute left-3 top-1/2 -translate-y-1/2">
-                                🔍
-                            </div>
-
-                            <!-- Suggestions -->
-                            <div v-if="suggestions.length"
-                                class="absolute left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg z-50">
-                                <div v-for="item in suggestions" :key="item.id"
-                                    class="px-4 py-2 hover:bg-blue-50 cursor-pointer" @click="
-                                        filters.search = item.name;
-                                    suggestions = [];
-                                    filterProducts();
-                                    ">
-                                    {{ item.name }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="group">
-
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-
-                            Category
-
-                        </label>
-
-                        <select v-model="filters.category_id" @change="filterProducts"
-                            class="w-full py-3 px-3 border rounded-xl">
-
-                            <option value="">All Categories</option>
-
-                            <option v-for="category in categories" :key="category.id" :value="category.id">
-
-                                {{ category.name }} ({{ category.products_count }})
-
-                            </option>
-
-                        </select>
-
-                    </div>
-
-
-                    <!-- Min Price -->
-                    <div class="group">
-                        <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-                            <svg class="w-4 h-4 mr-2 text-gray-400 group-focus-within:text-blue-500" fill="none"
-                                stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
-                                </path>
-                            </svg>
-                            Min Price
-                        </label>
-                        <div class="relative">
-                            <input v-model="filters.min_price" type="number" min="0" step="0.01" placeholder="0.00"
-                                class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all duration-200"
-                                @input="debouncedFilter" />
-                            <div class="absolute left-3 top-1/2 transform -translate-y-1/2">
-                                <span class="text-gray-400 font-medium">$</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Max Price -->
-                    <div class="group">
-                        <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-                            <svg class="w-4 h-4 mr-2 text-gray-400 group-focus-within:text-blue-500" fill="none"
-                                stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
-                                </path>
-                            </svg>
-                            Max Price
-                        </label>
-                        <div class="relative">
-                            <input v-model="filters.max_price" type="number" min="0" step="0.01" placeholder="1000.00"
-                                class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all duration-200"
-                                @input="debouncedFilter" />
-                            <div class="absolute left-3 top-1/2 transform -translate-y-1/2">
-                                <span class="text-gray-400 font-medium">$</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Sort Options -->
-                <div
-                    class="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-100">
-                    <div class="flex items-center space-x-2">
-                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4"></path>
-                        </svg>
-                        <span class="text-sm font-medium text-gray-700">Sort Options</span>
-                    </div>
-
-                    <div class="flex flex-wrap gap-3">
-                        <select v-model="filters.sort_by" @change="filterProducts"
-                            class="px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
-                            <option value="created_at">Date Added</option>
-                            <option value="price">Price</option>
-                            <option value="name">Name</option>
-                        </select>
-
-                        <select v-model="filters.sort_order" @change="filterProducts"
-                            class="px-4 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
-                            <option value="desc">Descending</option>
-                            <option value="asc">Ascending</option>
-                        </select>
-                    </div>
-                </div>
+        <!-- PRODUCT CATALOG GRID (RIGHT 3 COLUMNS) -->
+        <div class="lg:col-span-3 space-y-6">
+          
+          <!-- SORTING & PAGINATION SUMMARY BAR -->
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="text-xs text-slate-500 font-medium">
+              Showing <span class="font-bold text-slate-900">{{ products.from || 0 }}</span> - <span class="font-bold text-slate-900">{{ products.to || 0 }}</span> of <span class="font-bold text-slate-900">{{ products.total || 0 }}</span> Products Found
             </div>
 
-            <!-- Active Filter Chips -->
-
-            <div v-if="activeFilterChips.length" class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
-
-
-                <div class="flex items-center gap-2 mb-3">
-
-                    <span class="text-lg">
-                        🏷️
-                    </span>
-
-                    <h3 class="font-semibold text-gray-800">
-                        Active Filters
-                    </h3>
-
-                </div>
-
-
-                <div class="flex flex-wrap gap-3">
-
-
-                    <button v-for="chip in activeFilterChips" :key="chip.key" @click="removeFilterChip(chip.key)" class="flex items-center gap-2 px-4 py-2 rounded-full
-        bg-gradient-to-r from-blue-50 to-purple-50
-        text-blue-700
-        border border-blue-200
-        hover:bg-blue-100
-        transition">
-
-
-                        {{ chip.label }}
-
-
-                        <span class="text-red-500 font-bold">
-                            ✕
-                        </span>
-
-
-                    </button>
-
-
-                </div>
-
-
+            <div class="flex items-center gap-3">
+              <span class="text-xs font-bold text-slate-500">Sort By:</span>
+              <select 
+                v-model="filters.sort_by" 
+                @change="applyFilters" 
+                class="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold bg-white"
+              >
+                <option value="created_at">Newest Arrivals</option>
+                <option value="price_asc">Price: Low to High</option>
+                <option value="price_desc">Price: High to Low</option>
+                <option value="rating_desc">Highest Rated</option>
+                <option value="name_asc">Name: A to Z</option>
+              </select>
             </div>
+          </div>
 
-            <!-- Results Summary -->
-            <div
-                class="flex flex-col md:flex-row md:items-center justify-between mb-6 p-4 bg-white rounded-xl shadow-sm border border-gray-200">
-                <div class="mb-4 md:mb-0">
-                    <div class="flex items-center space-x-2">
-                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        <p class="text-gray-600">
-                            Showing <span class="font-bold text-gray-900">{{ products.from || 0 }}</span> to
-                            <span class="font-bold text-gray-900">{{ products.to || 0 }}</span> of
-                            <span class="font-bold text-gray-900">{{ products.total || 0 }}</span> results
-                        </p>
-                    </div>
-                    <div v-if="Object.values(filters).some(val => val !== '' && val !== null)" class="mt-2">
-                        <span class="text-xs text-gray-500">Active filters: {{ activeFilterCount }}</span>
-                    </div>
+          <!-- NO RESULTS FOUND EMPTY STATE -->
+          <div v-if="products.data.length === 0" class="bg-white rounded-2xl shadow-sm border border-slate-200 text-center py-16 p-6">
+            <i class="fa-solid fa-filter-circle-xmark text-5xl text-slate-300 mb-4"></i>
+            <h3 class="text-lg font-bold text-slate-800">No Products Matched Your Filter Matrix</h3>
+            <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">Try clearing some checkboxes, expanding price range, or clearing the search box.</p>
+            <button 
+              @click="resetAllFilters" 
+              class="mt-6 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs shadow-md transition-all"
+            >
+              Reset All Filters
+            </button>
+          </div>
+
+          <!-- PRODUCTS GRID CARDS -->
+          <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div 
+              v-for="product in products.data" 
+              :key="product.id"
+              class="bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-all p-5 flex flex-col justify-between"
+            >
+              <div>
+                <div class="flex justify-between items-start mb-3">
+                  <span class="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-[11px] font-bold">
+                    {{ product.category?.name || 'Category' }}
+                  </span>
+                  <span 
+                    :class="[
+                      'px-2 py-0.5 rounded text-[10px] font-bold', 
+                      product.in_stock ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                    ]"
+                  >
+                    {{ product.in_stock ? 'In Stock' : 'Out of Stock' }}
+                  </span>
                 </div>
 
-                <div v-if="loading"
-                    class="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-100 to-purple-100 rounded-lg">
-                    <div class="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                    <span class="text-sm font-medium text-blue-700">Loading products...</span>
+                <h3 class="font-bold text-slate-900 text-base mb-1 hover:text-blue-600 transition-colors">
+                  {{ product.name }}
+                </h3>
+
+                <p class="text-xs text-slate-400 mb-4 line-clamp-2">
+                  {{ product.description || 'Premium product details...' }}
+                </p>
+              </div>
+
+              <div>
+                <div class="flex justify-between items-center pt-3 border-t border-slate-100">
+                  <div>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase block">Brand</span>
+                    <span class="text-xs font-bold text-indigo-600">{{ product.brand || 'Generic' }}</span>
+                  </div>
+
+                  <div class="text-right">
+                    <span class="text-[10px] text-slate-400 font-bold uppercase block">Price</span>
+                    <span class="text-lg font-extrabold text-slate-900">${{ parseFloat(product.price).toFixed(2) }}</span>
+                  </div>
                 </div>
-            </div>
 
-            <!-- Products Grid -->
-            <div v-if="!loading && displayedProducts.length === 0"
-                class="text-center py-16 bg-white rounded-2xl shadow-sm border border-gray-200">
-                <div class="max-w-md mx-auto">
-                    <div
-                        class="w-20 h-20 mx-auto mb-6 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full flex items-center justify-center">
-                        <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
-                            </path>
-                        </svg>
-                    </div>
-                    <h3 class="text-xl font-bold text-gray-900 mb-2">
-
-                        {{ showFavoritesOnly
-                            ? 'No Favorite Products Found'
-                            : 'No Products Found'
-                        }}
-
-                    </h3>
-                    <p class="text-gray-600 mb-6">
-
-                        {{ showFavoritesOnly
-                            ? 'You have not added any products to your wishlist yet.'
-                            : 'Try adjusting your search or filter criteria.'
-                        }}
-
-                    </p>
-                    <button @click="resetFilters"
-                        class="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 hover:shadow-lg">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
-                            </path>
-                        </svg>
-                        <span>Reset All Filters</span>
-                    </button>
+                <div class="mt-3 flex justify-between items-center text-xs font-semibold text-amber-500">
+                  <span>⭐ {{ product.rating || 4.5 }} / 5.0</span>
+                  <span class="text-slate-400 text-[11px]">{{ product.stock_quantity || 10 }} units left</span>
                 </div>
+              </div>
             </div>
+          </div>
 
-            <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div v-for="product in displayedProducts" :key="product.id"
-                    class="group bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-xl hover:border-blue-200 transition-all duration-300 overflow-hidden">
-                    <!-- Product Header -->
-                    <div class="p-6">
-                        <div class="flex justify-between items-start mb-4">
-                            <div>
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold mb-2"
-                                    :class="getCategoryColor(product.category?.name)">
-                                    {{ product.category?.name || 'Uncategorized' }}
-                                </span>
-                                <h3
-                                    class="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors duration-200 line-clamp-1">
-                                    {{ product.name }}
-                                </h3>
-                            </div>
-                            <div class="text-right">
-                                <div class="text-2xl font-bold text-gray-900">${{ formatPrice(product.price) }}</div>
-                                <div class="text-xs text-gray-500 mt-1">Price</div>
-                            </div>
-                        </div>
+          <!-- PAGINATION LINKS -->
+          <div v-if="products.links && products.links.length > 3" class="flex justify-center gap-1.5 pt-4">
+            <button 
+              v-for="link in products.links" 
+              :key="link.label"
+              :disabled="!link.url"
+              @click="changePage(link.url)"
+              v-html="link.label"
+              :class="[
+                'px-3.5 py-2 text-xs font-semibold rounded-xl border transition-all',
+                link.active ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50',
+                !link.url ? 'opacity-40 cursor-not-allowed' : ''
+              ]"
+            ></button>
+          </div>
 
-                        <button @click="toggleFavorite(product.id)"
-                            class="text-3xl transform hover:scale-125 transition duration-200" :title="isFavorite(product.id)
-                                ? 'Remove from favorites'
-                                : 'Add to favorites'">
-
-                            <span :class="{
-                                'animate-pulse': isFavorite(product.id)
-                            }">
-
-                                {{ isFavorite(product.id) ? '❤️' : '🤍' }}
-
-                            </span>
-
-                        </button>
-
-                        <!-- Description -->
-                        <p class="text-gray-600 text-sm mb-4 line-clamp-2">
-                            {{ product.description || 'No description available' }}
-                        </p>
-
-                        <!-- Additional Info -->
-                        <div class="flex items-center justify-between pt-4 border-t border-gray-100">
-                            <div class="flex items-center space-x-1 text-gray-500">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
-                                    </path>
-                                </svg>
-                                <span class="text-xs">{{ formatDate(product.created_at) }}</span>
-                            </div>
-                            <button
-                                class="flex items-center space-x-1 text-blue-600 hover:text-blue-700 text-sm font-medium group-hover:underline"
-                                @click="viewProduct(product)">
-                                <span>View Details</span>
-                                <svg class="w-4 h-4 transform group-hover:translate-x-1 transition-transform duration-200"
-                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Gradient Bottom Border -->
-                    <div
-                        class="h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Pagination -->
-            <div v-if="displayedProducts.length > 0" class="mt-10">
-                <nav
-                    class="flex items-center justify-between bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
-                    <div class="flex-1 flex justify-between sm:hidden">
-                        <button :disabled="!products.prev_page_url" @click="goToPage(products.prev_page_url)"
-                            class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200">
-                            Previous
-                        </button>
-                        <button :disabled="!products.next_page_url" @click="goToPage(products.next_page_url)"
-                            class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200">
-                            Next
-                        </button>
-                    </div>
-
-                    <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                        <div>
-                            <p class="text-sm text-gray-700">
-                                Page <span class="font-medium">{{ products.current_page || 1 }}</span> of
-                                <span class="font-medium">{{ products.last_page || 1 }}</span>
-                            </p>
-                        </div>
-
-                        <div>
-                            <nav class="relative z-0 inline-flex rounded-lg shadow-sm -space-x-px">
-                                <button v-for="(link, index) in products.links" :key="index"
-                                    :disabled="!link.url || link.active" @click="goToPage(link.url)"
-                                    class="relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-all duration-200"
-                                    :class="[
-                                        link.active
-                                            ? 'z-10 bg-gradient-to-r from-blue-600 to-purple-600 border-blue-500 text-white'
-                                            : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50',
-                                        index === 0 ? 'rounded-l-lg' : '',
-                                        index === products.links.length - 1 ? 'rounded-r-lg' : '',
-                                        'disabled:opacity-50 disabled:cursor-not-allowed'
-                                    ]" v-html="link.label"></button>
-                            </nav>
-                        </div>
-                    </div>
-                </nav>
-            </div>
         </div>
 
-        <!-- View Product Modal -->
-        <div v-if="selectedProduct"
-            class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                <!-- Modal Header -->
-                <div class="p-6 border-b border-gray-200 flex justify-between items-center">
-                    <h3 class="text-xl font-bold text-gray-900">Product Details</h3>
-                    <button @click="selectedProduct = null" class="text-gray-400 hover:text-gray-500">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
-                </div>
+      </div>
 
-                <!-- Modal Content -->
-                <div class="p-6">
-                    <div class="flex items-start justify-between mb-6">
-                        <div>
-                            <span :class="getCategoryColor(selectedProduct.category?.name)"
-                                class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold mb-2">
-                                {{ selectedProduct.category?.name || 'Uncategorized' }}
-                            </span>
-                            <h4 class="text-2xl font-bold text-gray-900">{{ selectedProduct.name }}</h4>
-                        </div>
-                        <div class="text-right">
-                            <div class="text-3xl font-bold text-gray-900">${{ formatPrice(selectedProduct.price) }}
-                            </div>
-                            <div class="text-sm text-gray-500 mt-1">Total Price</div>
-                        </div>
-                    </div>
-
-                    <div class="prose max-w-none">
-                        <h5 class="text-lg font-semibold text-gray-900 mb-2">Description</h5>
-                        <p class="text-gray-600 mb-6">{{ selectedProduct.description || 'No description available' }}
-                        </p>
-
-                        <div class="grid grid-cols-2 gap-4 mb-6">
-                            <div class="bg-gray-50 p-4 rounded-lg">
-                                <div class="text-sm text-gray-500">Category</div>
-                                <div class="font-medium text-gray-900">{{ selectedProduct.category?.name || 'N/A' }}
-                                </div>
-                            </div>
-                            <div class="bg-gray-50 p-4 rounded-lg">
-                                <div class="text-sm text-gray-500">Created</div>
-                                <div class="font-medium text-gray-900">{{ formatDate(selectedProduct.created_at) }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Modal Footer -->
-                <div class="p-6 border-t border-gray-200 flex justify-end space-x-3">
-                    <button @click="selectedProduct = null"
-                        class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200">
-                        Close
-                    </button>
-                </div>
-            </div>
-        </div>
     </div>
+  </div>
 </template>
 
-<script>
-import { ref, onMounted, reactive, computed, watch } from 'vue';
-import axios from 'axios';
-import { debounce } from 'lodash';
-
-export default {
-    name: 'ProductFilter',
-
-    setup() {
-        const products = ref({
-            data: [],
-            links: [],
-            current_page: 1,
-            from: null,
-            to: null,
-            total: 0,
-            last_page: 1,
-        });
-
-        const categories = ref([]);
-        const loading = ref(false);
-        const selectedProduct = ref(null);
-        const suggestions = ref([]);
-        const favorites = ref([]);
-        const showFavoritesOnly = ref(false);
-
-        const filters = reactive({
-            search: '',
-            category_id: '',
-            min_price: '',
-            max_price: '',
-            sort_by: 'created_at',
-            sort_order: 'desc'
-        });
-
-
-        const activeFilterChips = computed(() => {
-
-            let chips = [];
-
-            if (filters.search) {
-                chips.push({
-                    key: 'search',
-                    label: `🔍 ${filters.search}`
-                });
-            }
-
-            if (filters.category_id) {
-
-                const category = categories.value.find(
-                    item => item.id == filters.category_id
-                );
-
-                chips.push({
-                    key: 'category_id',
-                    label: `📂 ${category?.name || 'Category'}`
-                });
-            }
-
-
-            if (filters.min_price) {
-
-                chips.push({
-                    key: 'min_price',
-                    label: `💰 Min: $${filters.min_price}`
-                });
-
-            }
-
-
-            if (filters.max_price) {
-
-                chips.push({
-                    key: 'max_price',
-                    label: `💰 Max: $${filters.max_price}`
-                });
-
-            }
-
-
-            if (filters.sort_by !== 'created_at') {
-
-                chips.push({
-                    key: 'sort_by',
-                    label: `↕ ${filters.sort_by}`
-                });
-
-            }
-
-
-            if (filters.sort_order !== 'desc') {
-
-                chips.push({
-                    key: 'sort_order',
-                    label: `⬆ ${filters.sort_order}`
-                });
-
-            }
-
-
-            if (showFavoritesOnly.value) {
-
-                chips.push({
-                    key: 'favorites',
-                    label: '❤️ Favorites Only'
-                });
-
-            }
-
-
-            return chips;
-
-        });
-
-        // Computed property for active filter count
-        const activeFilterCount = computed(() => {
-            return activeFilterChips.value.length;
-        });
-
-        const favoriteCount = computed(() => favorites.value.length);
-
-        const displayedProducts = computed(() => {
-
-            if (!showFavoritesOnly.value) {
-                return products.value.data;
-            }
-
-            return products.value.data.filter(product =>
-                favorites.value.includes(product.id)
-            );
-        });
-
-        watch(showFavoritesOnly, () => {
-
-            if (!showFavoritesOnly.value) {
-                fetchProducts();
-            }
-
-        });
-
-        // Helper function to format price safely
-        const formatPrice = (price) => {
-            if (!price && price !== 0) return '0.00';
-
-            const numPrice = typeof price === 'string' ? parseFloat(price) : price;
-
-            if (isNaN(numPrice)) return '0.00';
-
-            return numPrice.toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            });
-        };
-
-        // Helper function to format date
-        const formatDate = (dateString) => {
-            if (!dateString) return 'N/A';
-
-            const date = new Date(dateString);
-            return date.toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
-            });
-        };
-
-        // Helper function to get category color
-        const getCategoryColor = (categoryName) => {
-            const colors = {
-                'Electronics': 'bg-blue-100 text-blue-800',
-                'Books': 'bg-green-100 text-green-800',
-                'Clothing': 'bg-purple-100 text-purple-800',
-                'Home & Garden': 'bg-yellow-100 text-yellow-800',
-                'Sports': 'bg-red-100 text-red-800',
-                'Toys': 'bg-pink-100 text-pink-800',
-                'Beauty': 'bg-indigo-100 text-indigo-800',
-                'Automotive': 'bg-gray-100 text-gray-800',
-                'Food': 'bg-orange-100 text-orange-800',
-                'Health': 'bg-teal-100 text-teal-800'
-            };
-
-            return colors[categoryName] || 'bg-gray-100 text-gray-800';
-        };
-
-        // Truncate description
-        const truncateDescription = (description) => {
-            if (!description) return '';
-            return description.length > 100 ? description.substring(0, 100) + '...' : description;
-        };
-
-        // Load favorites from LocalStorage
-        const loadFavorites = () => {
-            const stored = localStorage.getItem('favorite_products');
-
-            if (stored) {
-                favorites.value = JSON.parse(stored);
-            }
-        };
-
-        // Save favorites
-        const saveFavorites = () => {
-            localStorage.setItem(
-                'favorite_products',
-                JSON.stringify(favorites.value)
-            );
-        };
-
-        // Check favorite
-        const isFavorite = (id) => {
-            return favorites.value.includes(id);
-        };
-
-        // Toggle favorite
-        const toggleFavorite = (id) => {
-            if (isFavorite(id)) {
-                favorites.value = favorites.value.filter(item => item !== id);
-            } else {
-                favorites.value.push(id);
-            }
-
-            saveFavorites();
-        };
-
-        // Fetch products
-        const fetchProducts = async (page = 1) => {
-            loading.value = true;
-
-            try {
-                const response = await axios.get('/api/products', {
-                    params: {
-                        ...filters,
-                        page: page
-                    }
-                });
-
-                if (response.data.success) {
-                    products.value = response.data.data;
-                }
-            } catch (error) {
-                console.error(error);
-            } finally {
-                loading.value = false;
-            }
-        };
-
-        // Fetch categories
-        const fetchCategories = async () => {
-            try {
-                const response = await axios.get('/api/categories');
-
-                if (response.data.success) {
-                    categories.value = response.data.data;
-                } else {
-                    categories.value = [];
-                }
-            } catch (error) {
-                console.error('Error fetching categories:', error);
-                categories.value = [];
-            }
-        };
-
-        // Filter products
-        const filterProducts = () => {
-            fetchProducts();
-        };
-
-        // Debounced filter
-        const debouncedFilter = debounce(() => {
-            fetchProducts();
-        }, 500);
-
-        const fetchSuggestions = debounce(async () => {
-
-            if (filters.search.length < 2) {
-                suggestions.value = [];
-                return;
-            }
-
-            try {
-                const response = await axios.get('/api/suggestions', {
-                    params: {
-                        search: filters.search
-                    }
-                });
-
-                suggestions.value = response.data.data;
-
-            } catch (error) {
-                suggestions.value = [];
-            }
-
-        }, 300);
-
-        // Go to page
-        const goToPage = (url) => {
-            if (!url) return;
-
-            const page = new URL(url).searchParams.get('page');
-
-            fetchProducts(page);
-        };
-
-        // Reset filters
-        const resetFilters = () => {
-
-            filters.search = '';
-            filters.category_id = '';
-            filters.min_price = '';
-            filters.max_price = '';
-
-            filters.sort_by = 'created_at';
-            filters.sort_order = 'desc';
-
-            showFavoritesOnly.value = false;
-
-            fetchProducts();
-
-        };
-
-        const removeFilterChip = (key) => {
-
-
-            if (key === 'favorites') {
-
-                showFavoritesOnly.value = false;
-                fetchProducts();
-                return;
-
-            }
-
-
-            if (key === 'sort_by') {
-
-                filters.sort_by = 'created_at';
-
-            }
-            else if (key === 'sort_order') {
-
-                filters.sort_order = 'desc';
-
-            }
-            else {
-
-                filters[key] = '';
-
-            }
-
-
-            fetchProducts();
-
-        };
-
-        // View product details
-        const viewProduct = (product) => {
-            selectedProduct.value = product;
-        };
-
-        onMounted(() => {
-            loadFavorites();
-            fetchProducts();
-            fetchCategories();
-        });
-
-        return {
-            products,
-            categories,
-            loading,
-            filters,
-            selectedProduct,
-            activeFilterCount,
-            activeFilterChips,
-            removeFilterChip,
-            fetchProducts,
-            filterProducts,
-            debouncedFilter,
-            goToPage,
-            resetFilters,
-            viewProduct,
-            formatPrice,
-            formatDate,
-            getCategoryColor,
-            suggestions,
-            fetchSuggestions,
-            truncateDescription,
-            favorites,
-            favoriteCount,
-            showFavoritesOnly,
-            displayedProducts,
-            toggleFavorite,
-            isFavorite,
-        };
-    }
+<script setup>
+import { ref, reactive, computed, onMounted } from 'vue'
+import axios from 'axios'
+import { debounce } from 'lodash'
+
+const products = ref({ data: [], links: [], from: 0, to: 0, total: 0 })
+const categories = ref([])
+const brandsList = ref([])
+const suggestions = ref([])
+const bounds = ref({ min_price: 0, max_price: 3000 })
+
+const filters = reactive({
+  search: '',
+  category_ids: [],
+  brands: [],
+  min_price: '',
+  max_price: '',
+  in_stock: false,
+  min_rating: '',
+  sort_by: 'created_at',
+  sort_order: 'desc'
+})
+
+// Active Filter Chips Computed Property
+const activeFilterChips = computed(() => {
+  const chips = []
+
+  if (filters.search) {
+    chips.push({ key: 'search', label: `🔍 Search: "${filters.search}"` })
+  }
+
+  if (filters.category_ids.length > 0) {
+    const selectedNames = categories.value
+      .filter(c => filters.category_ids.includes(c.id))
+      .map(c => c.name)
+      .join(', ')
+    chips.push({ key: 'category_ids', label: `📂 Categories: ${selectedNames}` })
+  }
+
+  if (filters.brands.length > 0) {
+    chips.push({ key: 'brands', label: `🏷️ Brands: ${filters.brands.join(', ')}` })
+  }
+
+  if (filters.in_stock) {
+    chips.push({ key: 'in_stock', label: `✅ In-Stock Only` })
+  }
+
+  if (filters.min_price || filters.max_price) {
+    chips.push({ 
+      key: 'price', 
+      label: `💰 Price: $${filters.min_price || 0} - $${filters.max_price || bounds.value.max_price}` 
+    })
+  }
+
+  if (filters.min_rating) {
+    chips.push({ key: 'min_rating', label: `⭐ Rating: ${filters.min_rating}+` })
+  }
+
+  return chips
+})
+
+// Synchronize URL with active filters
+const syncFiltersToUrl = () => {
+  const queryParams = new URLSearchParams()
+
+  if (filters.search) queryParams.set('search', filters.search)
+  if (filters.category_ids.length > 0) queryParams.set('category_ids', filters.category_ids.join(','))
+  if (filters.brands.length > 0) queryParams.set('brands', filters.brands.join(','))
+  if (filters.in_stock) queryParams.set('in_stock', '1')
+  if (filters.min_price) queryParams.set('min_price', filters.min_price)
+  if (filters.max_price) queryParams.set('max_price', filters.max_price)
+  if (filters.min_rating) queryParams.set('min_rating', filters.min_rating)
+  if (filters.sort_by) queryParams.set('sort_by', filters.sort_by)
+
+  const newUrl = window.location.pathname + (queryParams.toString() ? '?' + queryParams.toString() : '')
+  window.history.replaceState(null, '', newUrl)
 }
 
+// Load filters from URL on page load
+const loadFiltersFromUrl = () => {
+  const queryParams = new URLSearchParams(window.location.search)
 
+  if (queryParams.has('search')) filters.search = queryParams.get('search')
+  if (queryParams.has('category_ids')) {
+    filters.category_ids = queryParams.get('category_ids').split(',').map(Number)
+  }
+  if (queryParams.has('brands')) {
+    filters.brands = queryParams.get('brands').split(',')
+  }
+  if (queryParams.has('in_stock')) filters.in_stock = queryParams.get('in_stock') === '1'
+  if (queryParams.has('min_price')) filters.min_price = queryParams.get('min_price')
+  if (queryParams.has('max_price')) filters.max_price = queryParams.get('max_price')
+  if (queryParams.has('min_rating')) filters.min_rating = queryParams.get('min_rating')
+  if (queryParams.has('sort_by')) filters.sort_by = queryParams.get('sort_by')
+}
 
+// Fetch products from API
+const fetchProducts = async (page = 1) => {
+  try {
+    const params = {
+      search: filters.search,
+      category_ids: filters.category_ids.join(','),
+      brands: filters.brands.join(','),
+      in_stock: filters.in_stock ? 1 : 0,
+      min_price: filters.min_price,
+      max_price: filters.max_price,
+      min_rating: filters.min_rating,
+      sort_by: filters.sort_by,
+      page: page
+    }
+
+    const response = await axios.get('/api/products', { params })
+    if (response.data.success) {
+      products.value = response.data.data
+      if (response.data.meta) {
+        bounds.value.min_price = response.data.meta.min_price_bound
+        bounds.value.max_price = response.data.meta.max_price_bound
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching products:', error)
+  }
+}
+
+// Apply Filters Handler
+const applyFilters = () => {
+  syncFiltersToUrl()
+  fetchProducts()
+}
+
+// Debounced search input handler
+const onSearchInput = debounce(() => {
+  applyFilters()
+  fetchSuggestions()
+}, 300)
+
+// Fetch search suggestions
+const fetchSuggestions = async () => {
+  if (filters.search.length < 2) {
+    suggestions.value = []
+    return
+  }
+
+  try {
+    const response = await axios.get('/api/suggestions', { params: { search: filters.search } })
+    if (response.data.success) {
+      suggestions.value = response.data.data
+    }
+  } catch (error) {
+    console.error('Error fetching suggestions:', error)
+  }
+}
+
+const selectSuggestion = (item) => {
+  filters.search = item.name
+  suggestions.value = []
+  applyFilters()
+}
+
+// Remove single filter chip
+const removeFilterChip = (chip) => {
+  if (chip.key === 'search') filters.search = ''
+  if (chip.key === 'category_ids') filters.category_ids = []
+  if (chip.key === 'brands') filters.brands = []
+  if (chip.key === 'in_stock') filters.in_stock = false
+  if (chip.key === 'price') { filters.min_price = ''; filters.max_price = '' }
+  if (chip.key === 'min_rating') filters.min_rating = ''
+
+  applyFilters()
+}
+
+// Reset all filters
+const resetAllFilters = () => {
+  filters.search = ''
+  filters.category_ids = []
+  filters.brands = []
+  filters.min_price = ''
+  filters.max_price = ''
+  filters.in_stock = false
+  filters.min_rating = ''
+  filters.sort_by = 'created_at'
+
+  applyFilters()
+}
+
+// Fetch categories and brands for matrix
+const loadMetadata = async () => {
+  try {
+    const [catRes, brandRes] = await Promise.all([
+      axios.get('/api/categories'),
+      axios.get('/api/brands')
+    ])
+
+    if (catRes.data.success) categories.value = catRes.data.data
+    if (brandRes.data.success) brandsList.value = brandRes.data.data
+  } catch (error) {
+    console.error('Error loading metadata:', error)
+  }
+}
+
+// Change page handler
+const changePage = (url) => {
+  if (!url) return
+  const pageParam = new URL(url).searchParams.get('page')
+  fetchProducts(pageParam)
+}
+
+// Copy Shareable URL
+const copyShareableLink = () => {
+  navigator.clipboard.writeText(window.location.href)
+  alert('Shareable Filter Link copied to clipboard!')
+}
+
+// Multi-Format Export Studio (CSV)
+const exportCSV = () => {
+  let csvContent = "data:text/csv;charset=utf-8,ID,Name,Brand,Price,Rating,InStock,Category\n"
+  products.value.data.forEach(p => {
+    csvContent += `"${p.id}","${p.name}","${p.brand}","${p.price}","${p.rating}","${p.in_stock ? 'Yes' : 'No'}","${p.category?.name || ''}"\n`
+  })
+
+  const encodedUri = encodeURI(csvContent)
+  const link = document.createElement("a")
+  link.setAttribute("href", encodedUri)
+  link.setAttribute("download", `Filtered_Products_${new Date().toISOString().slice(0, 10)}.csv`)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
+// Multi-Format Export Studio (Excel)
+const exportExcel = () => {
+  let excelContent = "ID\tProduct Name\tBrand\tPrice ($)\tRating\tIn Stock\tCategory\n"
+  products.value.data.forEach(p => {
+    excelContent += `${p.id}\t${p.name}\t${p.brand}\t${p.price}\t${p.rating}\t${p.in_stock ? 'Yes' : 'No'}\t${p.category?.name || ''}\n`
+  })
+
+  const blob = new Blob([excelContent], { type: "application/vnd.ms-excel" })
+  const link = document.createElement("a")
+  link.href = URL.createObjectURL(blob)
+  link.download = `Filtered_Products_${new Date().toISOString().slice(0, 10)}.xls`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
+// Multi-Format Export Studio (PDF/Print)
+const exportPrintPDF = () => {
+  window.print()
+}
+
+onMounted(() => {
+  loadMetadata()
+  loadFiltersFromUrl()
+  fetchProducts()
+})
 </script>
-
-<style scoped>
-/* Smooth transitions */
-* {
-    transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: 150ms;
-}
-
-/* Custom scrollbar for modal */
-::-webkit-scrollbar {
-    width: 8px;
-}
-
-::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: #555;
-}
-
-/* Line clamp utility */
-.line-clamp-1 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 1;
-}
-
-.line-clamp-2 {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-}
-
-/* Gradient animations */
-@keyframes gradient {
-    0% {
-        background-position: 0% 50%;
-    }
-
-    50% {
-        background-position: 100% 50%;
-    }
-
-    100% {
-        background-position: 0% 50%;
-    }
-}
-
-.bg-gradient-animate {
-    background-size: 200% 200%;
-    animation: gradient 3s ease infinite;
-}
-
-/* Hover effects */
-.group:hover .group-hover\:translate-x-1 {
-    transform: translateX(0.25rem);
-}
-
-/* Focus styles */
-:focus {
-    outline: 2px solid transparent;
-    outline-offset: 2px;
-}
-
-/* Smooth shadow transitions */
-.shadow-sm {
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-}
-
-.shadow-lg {
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-}
-
-.shadow-xl {
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-}
-
-.shadow-2xl {
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-}
-
-/* Custom animations */
-@keyframes spin {
-    from {
-        transform: rotate(0deg);
-    }
-
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-.animate-spin {
-    animation: spin 1s linear infinite;
-}
-</style>

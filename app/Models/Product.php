@@ -9,12 +9,23 @@ class Product extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'slug', 'description', 'price', 'category_id'];
-    
+    protected $fillable = [
+        'name',
+        'slug',
+        'description',
+        'price',
+        'category_id',
+        'brand',
+        'in_stock',
+        'rating',
+        'stock_quantity'
+    ];
+
     protected $casts = [
-        'price' => 'float', // Cast price to float
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
+        'price' => 'float',
+        'rating' => 'float',
+        'in_stock' => 'boolean',
+        'stock_quantity' => 'integer',
     ];
 
     public function category()
